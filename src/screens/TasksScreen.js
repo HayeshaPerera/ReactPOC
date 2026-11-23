@@ -7,11 +7,12 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
-  Animated,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
+import { useTasks } from '../context/TaskContext';
 
 const CATEGORIES = [
   { id: 'all', label: 'All', icon: 'list' },
@@ -20,118 +21,159 @@ const CATEGORIES = [
   { id: 'shopping', label: 'Shopping', icon: 'cart' },
 ];
 
-const INITIAL_TASKS = [
-  { id: '1', text: 'Set up React Native project', completed: true, category: 'work' },
-  { id: '2', text: 'Design app UI mockups', completed: false, category: 'work' },
-  { id: '3', text: 'Buy groceries', completed: false, category: 'shopping' },
-  { id: '4', text: 'Go for a run', completed: false, category: 'personal' },
-  { id: '5', text: 'Read documentation', completed: true, category: 'work' },
-];
-
 export default function TasksScreen() {
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const { theme } = useTheme();
+  const {
+    tasks,
+    addTask,
+    toggleTask,
+    toggleStar,
+    deleteTask,
+    clearAllTasks,
+    completedCount,
+    totalCount,
+  } = useTasks();
+
   const [newTask, setNewTask] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [taskCategory, setTaskCategory] = useState('work');
 
-  const addTask = () => {
+  const handleAddTask = () => {
     if (newTask.trim() === '') {
-      Alert.alert('Oops!', 'Please enter a task description.');
+      Alert.alert('Required', 'Please enter a task description.');
       return;
     }
-    const task = {
-      id: Date.now().toString(),
-      text: newTask.trim(),
-      completed: false,
-      category: taskCategory,
-    };
-    setTasks([task, ...tasks]);
+    addTask(newTask, taskCategory);
     setNewTask('');
   };
 
-  const toggleTask = (id) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === id ? { ...task, completed: !task.completed } : task
-      )
-    );
-  };
-
-  const deleteTask = (id) => {
+  const confirmDelete = (id) => {
     Alert.alert('Delete Task', 'Are you sure you want to delete this task?', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => setTasks(tasks.filter((task) => task.id !== id)),
-      },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteTask(id) },
+    ]);
+  };
+
+  const confirmClearAll = () => {
+    if (tasks.length === 0) return;
+    Alert.alert('Clear All Tasks', 'Are you sure you want to remove all tasks?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Clear All', style: 'destructive', onPress: clearAllTasks },
     ]);
   };
 
   const filteredTasks =
     selectedCategory === 'all'
       ? tasks
-      : tasks.filter((task) => task.category === selectedCategory);
+      : tasks.filter((t) => t.category === selectedCategory);
 
-  const completedCount = tasks.filter((t) => t.completed).length;
-  const totalCount = tasks.length;
-
-  const getCategoryColor = (category) => {
-    switch (category) {
-      case 'work': return '#6C63FF';
-      case 'personal': return '#4CAF50';
-      case 'shopping': return '#FF9800';
-      default: return '#888';
+  const getCategoryColor = (cat) => {
+    switch (cat) {
+      case 'work': return theme.primary;
+      case 'personal': return theme.success;
+      case 'shopping': return theme.warning;
+      default: return theme.subText;
     }
   };
 
   const renderTask = ({ item }) => (
-    <View style={[styles.taskItem, item.completed && styles.taskCompleted]}>
+    <View
+      style={[
+        styles.taskItem,
+        { backgroundColor: theme.card, borderColor: theme.border },
+        item.completed && styles.taskCompleted,
+      ]}
+    >
       <TouchableOpacity
         style={styles.checkbox}
         onPress={() => toggleTask(item.id)}
       >
         <Ionicons
           name={item.completed ? 'checkmark-circle' : 'ellipse-outline'}
-          size={28}
-          color={item.completed ? '#4CAF50' : '#CCC'}
+          size={26}
+          color={item.completed ? theme.success : theme.subText}
         />
       </TouchableOpacity>
+
       <View style={styles.taskContent}>
-        <Text style={[styles.taskText, item.completed && styles.taskTextCompleted]}>
+        <Text
+          style={[
+            styles.taskText,
+            { color: theme.text },
+            item.completed && [styles.taskTextCompleted, { color: theme.subText }],
+          ]}
+        >
           {item.text}
         </Text>
-        <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) + '20' }]}>
-          <Text style={[styles.categoryBadgeText, { color: getCategoryColor(item.category) }]}>
-            {item.category}
+        <View style={styles.badgeRow}>
+          <View
+            style={[
+              styles.categoryBadge,
+              { backgroundColor: getCategoryColor(item.category) + '22' },
+            ]}
+          >
+            <Text
+              style={[
+                styles.categoryBadgeText,
+                { color: getCategoryColor(item.category) },
+              ]}
+            >
+              {item.category}
+            </Text>
+          </View>
+          <Text style={[styles.savedBadge, { color: theme.subText }]}>
+            • saved offline
           </Text>
         </View>
       </View>
-      <TouchableOpacity onPress={() => deleteTask(item.id)} style={styles.deleteBtn}>
-        <Ionicons name="trash-outline" size={20} color="#FF5252" />
+
+      <TouchableOpacity
+        onPress={() => toggleStar(item.id)}
+        style={styles.iconBtn}
+      >
+        <Ionicons
+          name={item.starred ? 'star' : 'star-outline'}
+          size={20}
+          color={item.starred ? '#FFB300' : theme.subText}
+        />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => confirmDelete(item.id)}
+        style={styles.iconBtn}
+      >
+        <Ionicons name="trash-outline" size={20} color={theme.danger} />
       </TouchableOpacity>
     </View>
   );
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={[styles.container, { backgroundColor: theme.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>My Tasks</Text>
-        <Text style={styles.progress}>
-          {completedCount}/{totalCount} completed
-        </Text>
+        <View>
+          <Text style={[styles.title, { color: theme.text }]}>My Tasks</Text>
+          <Text style={[styles.progress, { color: theme.primary }]}>
+            {completedCount}/{totalCount} completed • Local Database
+          </Text>
+        </View>
+        <TouchableOpacity onPress={confirmClearAll} style={styles.clearBtn}>
+          <Ionicons name="trash" size={18} color={theme.subText} />
+        </TouchableOpacity>
       </View>
 
       {/* Progress Bar */}
-      <View style={styles.progressBarBg}>
+      <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
         <View
           style={[
             styles.progressBarFill,
-            { width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : '0%' },
+            {
+              backgroundColor: theme.primary,
+              width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : '0%',
+            },
           ]}
         />
       </View>
@@ -143,19 +185,21 @@ export default function TasksScreen() {
             key={cat.id}
             style={[
               styles.categoryChip,
-              selectedCategory === cat.id && styles.categoryChipActive,
+              { backgroundColor: theme.card, borderColor: theme.border },
+              selectedCategory === cat.id && { backgroundColor: theme.primary, borderColor: theme.primary },
             ]}
             onPress={() => setSelectedCategory(cat.id)}
           >
             <Ionicons
               name={cat.icon}
-              size={16}
-              color={selectedCategory === cat.id ? '#FFF' : '#666'}
+              size={15}
+              color={selectedCategory === cat.id ? '#FFF' : theme.subText}
             />
             <Text
               style={[
                 styles.categoryChipText,
-                selectedCategory === cat.id && styles.categoryChipTextActive,
+                { color: theme.subText },
+                selectedCategory === cat.id && { color: '#FFF', fontWeight: 'bold' },
               ]}
             >
               {cat.label}
@@ -173,21 +217,29 @@ export default function TasksScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="checkmark-done-circle" size={64} color="#DDD" />
-            <Text style={styles.emptyText}>No tasks here!</Text>
-            <Text style={styles.emptySubtext}>Add a task below to get started</Text>
+            <Ionicons name="checkmark-done-circle" size={54} color={theme.subText} />
+            <Text style={[styles.emptyText, { color: theme.text }]}>All clear!</Text>
+            <Text style={[styles.emptySubtext, { color: theme.subText }]}>
+              Add a new task below. It persists in local storage.
+            </Text>
           </View>
         }
       />
 
-      {/* Add Task Input */}
-      <View style={styles.inputContainer}>
+      {/* Add Task Input Area */}
+      <View
+        style={[
+          styles.inputContainer,
+          { backgroundColor: theme.card, borderTopColor: theme.border },
+        ]}
+      >
         <View style={styles.categorySelector}>
           {['work', 'personal', 'shopping'].map((cat) => (
             <TouchableOpacity
               key={cat}
               style={[
                 styles.miniCategoryChip,
+                { backgroundColor: theme.inputBg },
                 taskCategory === cat && { backgroundColor: getCategoryColor(cat) },
               ]}
               onPress={() => setTaskCategory(cat)}
@@ -195,7 +247,8 @@ export default function TasksScreen() {
               <Text
                 style={[
                   styles.miniCategoryText,
-                  taskCategory === cat && { color: '#FFF' },
+                  { color: theme.subText },
+                  taskCategory === cat && { color: '#FFF', fontWeight: '700' },
                 ]}
               >
                 {cat}
@@ -203,18 +256,22 @@ export default function TasksScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
         <View style={styles.inputRow}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.inputBg, color: theme.text }]}
             value={newTask}
             onChangeText={setNewTask}
-            placeholder="Add a new task..."
-            placeholderTextColor="#999"
-            onSubmitEditing={addTask}
+            placeholder="Add a new task (persisted to storage)..."
+            placeholderTextColor={theme.subText}
+            onSubmitEditing={handleAddTask}
             returnKeyType="done"
           />
-          <TouchableOpacity style={styles.addButton} onPress={addTask}>
-            <Ionicons name="add" size={28} color="#FFF" />
+          <TouchableOpacity
+            style={[styles.addButton, { backgroundColor: theme.primary }]}
+            onPress={handleAddTask}
+          >
+            <Ionicons name="add" size={26} color="#FFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -225,36 +282,36 @@ export default function TasksScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 12,
+    paddingTop: 54,
+    paddingBottom: 10,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#1A1A2E',
   },
   progress: {
-    fontSize: 14,
-    color: '#6C63FF',
+    fontSize: 13,
     fontWeight: '600',
+    marginTop: 2,
+  },
+  clearBtn: {
+    padding: 8,
   },
   progressBarBg: {
     height: 6,
-    backgroundColor: '#E0E0E0',
     borderRadius: 3,
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 14,
+    overflow: 'hidden',
   },
   progressBarFill: {
     height: 6,
-    backgroundColor: '#6C63FF',
     borderRadius: 3,
   },
   categoryRow: {
@@ -266,122 +323,103 @@ const styles = StyleSheet.create({
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FFF',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 18,
+    borderWidth: 1,
     gap: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  categoryChipActive: {
-    backgroundColor: '#6C63FF',
   },
   categoryChipText: {
-    fontSize: 13,
-    color: '#666',
+    fontSize: 12,
     fontWeight: '500',
-  },
-  categoryChipTextActive: {
-    color: '#FFF',
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 10,
+    paddingBottom: 16,
   },
   taskItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
     borderRadius: 14,
-    padding: 14,
+    padding: 12,
     marginBottom: 10,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.03,
     shadowRadius: 3,
     elevation: 1,
   },
   taskCompleted: {
-    opacity: 0.6,
+    opacity: 0.65,
   },
   checkbox: {
-    marginRight: 12,
+    marginRight: 10,
   },
   taskContent: {
     flex: 1,
   },
   taskText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
     fontWeight: '500',
   },
   taskTextCompleted: {
     textDecorationLine: 'line-through',
-    color: '#999',
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 6,
   },
   categoryBadge: {
-    alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 8,
-    marginTop: 6,
+    borderRadius: 6,
   },
   categoryBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     textTransform: 'capitalize',
   },
-  deleteBtn: {
-    padding: 8,
+  savedBadge: {
+    fontSize: 10,
+  },
+  iconBtn: {
+    padding: 6,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 50,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#999',
-    marginTop: 12,
+    marginTop: 10,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#BBB',
+    fontSize: 13,
     marginTop: 4,
   },
   inputContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 30,
+    paddingBottom: 24,
     paddingTop: 10,
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 4,
+    borderTopWidth: 1,
   },
   categorySelector: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   miniCategoryChip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#F0F0F0',
+    borderRadius: 10,
   },
   miniCategoryText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
+    fontSize: 11,
     textTransform: 'capitalize',
   },
   inputRow: {
@@ -390,25 +428,17 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#333',
-    marginRight: 10,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    marginRight: 8,
   },
   addButton: {
-    backgroundColor: '#6C63FF',
-    width: 50,
-    height: 50,
-    borderRadius: 14,
+    width: 46,
+    height: 46,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
 });

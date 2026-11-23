@@ -8,6 +8,10 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
+import { useTasks } from '../context/TaskContext';
+import { useUser } from '../context/UserContext';
+import { ENV } from '../config/env';
 
 const { width } = Dimensions.get('window');
 
@@ -17,11 +21,16 @@ const QUOTES = [
   { text: 'Stay hungry, stay foolish.', author: 'Steve Jobs' },
   { text: "Code is like humor. When you have to explain it, it's bad.", author: 'Cory House' },
   { text: 'First, solve the problem. Then, write the code.', author: 'John Johnson' },
+  { text: 'Simplicity is the soul of efficiency.', author: 'Austin Freeman' },
 ];
 
 export default function HomeScreen({ navigation }) {
+  const { theme } = useTheme();
+  const { completedCount, pendingCount, starredCount, totalCount } = useTasks();
+  const { user } = useUser();
+
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [quote, setQuote] = useState(QUOTES[0]);
+  const [quoteIndex, setQuoteIndex] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -29,8 +38,7 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
   useEffect(() => {
-    const randomIndex = Math.floor(Math.random() * QUOTES.length);
-    setQuote(QUOTES[randomIndex]);
+    setQuoteIndex(Math.floor(Math.random() * QUOTES.length));
   }, []);
 
   const getGreeting = () => {
@@ -57,76 +65,131 @@ export default function HomeScreen({ navigation }) {
     });
   };
 
+  const nextQuote = () => {
+    setQuoteIndex((prev) => (prev + 1) % QUOTES.length);
+  };
+
+  const currentQuote = QUOTES[quoteIndex];
+
   const stats = [
-    { icon: 'checkmark-circle', label: 'Completed', value: '12', color: '#4CAF50' },
-    { icon: 'time', label: 'Pending', value: '5', color: '#FF9800' },
-    { icon: 'star', label: 'Starred', value: '3', color: '#2196F3' },
+    { icon: 'checkmark-circle', label: 'Done', value: completedCount, color: theme.success },
+    { icon: 'time', label: 'Pending', value: pendingCount, color: theme.warning },
+    { icon: 'star', label: 'Starred', value: starredCount, color: '#E91E63' },
   ];
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>{getGreeting()} 👋</Text>
-          <Text style={styles.subtitle}>Welcome to ReactPOC</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.greeting, { color: theme.text }]}>
+            {getGreeting()} 👋
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.subText }]}>
+            {user.name} • {ENV.appName}
+          </Text>
         </View>
-        <TouchableOpacity style={styles.avatarContainer}>
-          <Ionicons name="person-circle" size={48} color="#6C63FF" />
+        <TouchableOpacity
+          style={styles.avatarContainer}
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <Ionicons name="person-circle" size={48} color={theme.primary} />
         </TouchableOpacity>
       </View>
 
       {/* Clock Card */}
-      <View style={styles.clockCard}>
+      <View style={[styles.clockCard, { backgroundColor: theme.primary }]}>
         <Text style={styles.time}>{formatTime()}</Text>
         <Text style={styles.date}>{formatDate()}</Text>
+        <View style={styles.envPill}>
+          <Text style={styles.envPillText}>ENV: {ENV.environment.toUpperCase()}</Text>
+        </View>
       </View>
 
-      {/* Stats Row */}
+      {/* Real-time Task Progress Summary */}
+      <View style={[styles.summaryCard, { backgroundColor: theme.card }]}>
+        <View style={styles.summaryHeader}>
+          <Text style={[styles.summaryTitle, { color: theme.text }]}>Task Progress</Text>
+          <Text style={[styles.summaryPercent, { color: theme.primary }]}>
+            {totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%
+          </Text>
+        </View>
+        <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
+          <View
+            style={[
+              styles.progressBarFill,
+              {
+                backgroundColor: theme.primary,
+                width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : '0%',
+              },
+            ]}
+          />
+        </View>
+        <Text style={[styles.summarySub, { color: theme.subText }]}>
+          {completedCount} of {totalCount} total tasks completed
+        </Text>
+      </View>
+
+      {/* Live Stats Row */}
       <View style={styles.statsRow}>
         {stats.map((stat, index) => (
-          <View key={index} style={styles.statCard}>
-            <Ionicons name={stat.icon} size={28} color={stat.color} />
-            <Text style={styles.statValue}>{stat.value}</Text>
-            <Text style={styles.statLabel}>{stat.label}</Text>
+          <View
+            key={index}
+            style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+          >
+            <Ionicons name={stat.icon} size={26} color={stat.color} />
+            <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
+            <Text style={[styles.statLabel, { color: theme.subText }]}>{stat.label}</Text>
           </View>
         ))}
       </View>
 
       {/* Quote Card */}
-      <View style={styles.quoteCard}>
-        <Ionicons name="chatbubble-ellipses" size={24} color="#6C63FF" />
-        <Text style={styles.quoteText}>"{quote.text}"</Text>
-        <Text style={styles.quoteAuthor}>— {quote.author}</Text>
+      <View style={[styles.quoteCard, { backgroundColor: theme.card }]}>
+        <View style={styles.quoteTop}>
+          <Ionicons name="chatbubble-ellipses" size={22} color={theme.primary} />
+          <TouchableOpacity onPress={nextQuote}>
+            <Ionicons name="refresh" size={20} color={theme.subText} />
+          </TouchableOpacity>
+        </View>
+        <Text style={[styles.quoteText, { color: theme.text }]}>
+          "{currentQuote.text}"
+        </Text>
+        <Text style={[styles.quoteAuthor, { color: theme.primary }]}>
+          — {currentQuote.author}
+        </Text>
       </View>
 
       {/* Quick Actions */}
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
       <View style={styles.actionsRow}>
         <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: '#E8F5E9' }]}
+          style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
           onPress={() => navigation.navigate('Tasks')}
         >
-          <Ionicons name="add-circle" size={32} color="#4CAF50" />
-          <Text style={styles.actionText}>New Task</Text>
+          <Ionicons name="add-circle" size={30} color={theme.success} />
+          <Text style={[styles.actionText, { color: theme.text }]}>Manage Tasks</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: '#E3F2FD' }]}
+          style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
           onPress={() => navigation.navigate('Profile')}
         >
-          <Ionicons name="person" size={32} color="#2196F3" />
-          <Text style={styles.actionText}>Profile</Text>
+          <Ionicons name="person" size={30} color={theme.primary} />
+          <Text style={[styles.actionText, { color: theme.text }]}>Edit Profile</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionCard, { backgroundColor: '#FFF3E0' }]}
-          onPress={() => setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)])}
+          style={[styles.actionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+          onPress={nextQuote}
         >
-          <Ionicons name="refresh" size={32} color="#FF9800" />
-          <Text style={styles.actionText}>New Quote</Text>
+          <Ionicons name="sparkles" size={30} color={theme.warning} />
+          <Text style={[styles.actionText, { color: theme.text }]}>Inspire Me</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={{ height: 30 }} />
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
@@ -134,124 +197,179 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
     paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: 54,
+    paddingBottom: 16,
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#1A1A2E',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 14,
     marginTop: 4,
   },
   avatarContainer: {
-    padding: 4,
+    padding: 2,
   },
   clockCard: {
-    backgroundColor: '#6C63FF',
     borderRadius: 20,
-    padding: 24,
+    padding: 20,
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#6C63FF',
+    marginBottom: 16,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 8,
+    elevation: 6,
   },
   time: {
-    fontSize: 42,
+    fontSize: 38,
     fontWeight: 'bold',
     color: '#FFF',
     letterSpacing: 2,
   },
   date: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 6,
+  },
+  envPill: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginTop: 10,
+  },
+  envPillText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  summaryCard: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  summaryTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  summaryPercent: {
     fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 8,
+    fontWeight: 'bold',
+  },
+  progressBarBg: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: 8,
+    borderRadius: 4,
+  },
+  summarySub: {
+    fontSize: 12,
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 16,
+    gap: 10,
   },
   statCard: {
-    backgroundColor: '#FFF',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     alignItems: 'center',
-    width: (width - 60) / 3,
+    flex: 1,
+    borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   statValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#1A1A2E',
-    marginTop: 8,
+    marginTop: 6,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '500',
   },
   quoteCard: {
-    backgroundColor: '#FFF',
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
+    padding: 18,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
   },
+  quoteTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   quoteText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
     fontStyle: 'italic',
-    lineHeight: 24,
-    marginTop: 12,
+    lineHeight: 22,
   },
   quoteAuthor: {
-    fontSize: 14,
-    color: '#6C63FF',
+    fontSize: 13,
     marginTop: 8,
     textAlign: 'right',
+    fontWeight: '600',
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#1A1A2E',
     marginBottom: 12,
   },
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 10,
   },
   actionCard: {
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     alignItems: 'center',
-    width: (width - 60) / 3,
+    flex: 1,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
   actionText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#333',
-    marginTop: 8,
+    marginTop: 6,
+    textAlign: 'center',
   },
 });

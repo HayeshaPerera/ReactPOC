@@ -1,8 +1,12 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
+import { TaskProvider } from './src/context/TaskContext';
+import { UserProvider } from './src/context/UserContext';
 
 import HomeScreen from './src/screens/HomeScreen';
 import TasksScreen from './src/screens/TasksScreen';
@@ -10,11 +14,25 @@ import ProfileScreen from './src/screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
-export default function App() {
+function MainNavigator() {
+  const { theme, isDarkMode } = useTheme();
+
+  const navigationTheme = {
+    ...(isDarkMode ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDarkMode ? DarkTheme.colors : DefaultTheme.colors),
+      background: theme.background,
+      card: theme.tabBar,
+      text: theme.text,
+      border: theme.border,
+      primary: theme.primary,
+    },
+  };
+
   return (
     <>
-      <StatusBar style="auto" />
-      <NavigationContainer>
+      <StatusBar style={theme.statusBarStyle} />
+      <NavigationContainer theme={navigationTheme}>
         <Tab.Navigator
           screenOptions={({ route }) => ({
             tabBarIcon: ({ focused, color, size }) => {
@@ -28,17 +46,18 @@ export default function App() {
               }
               return <Ionicons name={iconName} size={size} color={color} />;
             },
-            tabBarActiveTintColor: '#6C63FF',
-            tabBarInactiveTintColor: '#999',
+            tabBarActiveTintColor: theme.primary,
+            tabBarInactiveTintColor: theme.subText,
             headerShown: false,
             tabBarStyle: {
-              backgroundColor: '#FFF',
-              borderTopWidth: 0,
-              elevation: 10,
+              backgroundColor: theme.tabBar,
+              borderTopColor: theme.border,
+              borderTopWidth: 1,
+              elevation: 8,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
+              shadowOpacity: isDarkMode ? 0.2 : 0.05,
+              shadowRadius: 6,
               height: 65,
               paddingBottom: 10,
               paddingTop: 8,
@@ -55,5 +74,17 @@ export default function App() {
         </Tab.Navigator>
       </NavigationContainer>
     </>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <UserProvider>
+        <TaskProvider>
+          <MainNavigator />
+        </TaskProvider>
+      </UserProvider>
+    </ThemeProvider>
   );
 }
