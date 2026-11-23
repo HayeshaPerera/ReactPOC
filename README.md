@@ -6,6 +6,7 @@ A modern, simple, and fully functional React Native proof-of-concept (POC) appli
 
 ## ✨ Features
 
+- **🔐 Strict Authentication & Validation** — Real email format verification, duplicate account prevention, password length enforcement (min 6 chars), password confirmation, and strict credential verification with inline alerts.
 - **📱 Tab Navigation** — Seamless bottom tab navigation (`Home`, `Tasks`, `Profile`) with active badges and theme-reactive styling.
 - **💾 Local Database Storage (AsyncStorage)** — Tasks and User Profile data persist automatically offline on the device without requiring an external server.
 - **🌓 Dynamic Dark Mode & Theming** — Global theme context that switches every screen, card, modal, and bottom tab bar between light and dark modes with a single toggle.

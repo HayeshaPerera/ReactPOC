@@ -18,50 +18,95 @@ import { ENV } from '../config/env';
 
 export default function LoginScreen() {
   const { login, register } = useAuth();
-  const { theme, isDarkMode } = useTheme();
+  const { theme } = useTheme();
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('hayesha@example.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const switchTab = (toRegister) => {
+    setIsRegistering(toRegister);
+    setErrorMessage('');
+    setPassword('');
+    setConfirmPassword('');
+    if (toRegister) {
+      setName('');
+      setEmail('');
+    } else {
+      setEmail('');
+    }
+  };
 
   const handleSubmit = async () => {
     if (submitting) return;
+    setErrorMessage('');
 
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Required', 'Please fill in all required fields.');
-      return;
+    // Pre-flight checks on client side
+    if (isRegistering) {
+      if (!name.trim()) {
+        setErrorMessage('Please enter your full name.');
+        return;
+      }
+      if (!email.trim()) {
+        setErrorMessage('Please enter your email address.');
+        return;
+      }
+      if (!password) {
+        setErrorMessage('Please enter a password.');
+        return;
+      }
+      if (password.length < 6) {
+        setErrorMessage('Password must be at least 6 characters long.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setErrorMessage('Passwords do not match. Please re-enter.');
+        return;
+      }
+    } else {
+      if (!email.trim()) {
+        setErrorMessage('Please enter your email address.');
+        return;
+      }
+      if (!password) {
+        setErrorMessage('Please enter your password.');
+        return;
+      }
     }
 
     setSubmitting(true);
     try {
       if (isRegistering) {
-        if (!name.trim()) {
-          Alert.alert('Required', 'Please enter your name.');
-          setSubmitting(false);
-          return;
-        }
-        await register(name, email, password);
+        await register(name, email, password, confirmPassword);
       } else {
         await login(email, password);
       }
     } catch (err) {
-      Alert.alert('Authentication Error', err.message || 'Failed to authenticate.');
+      const msg = err.message || 'Authentication failed.';
+      setErrorMessage(msg);
+      Alert.alert('Validation Error', msg);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleQuickDemo = async () => {
+    setErrorMessage('');
     setEmail('hayesha@example.com');
     setPassword('password123');
     setSubmitting(true);
     try {
       await login('hayesha@example.com', 'password123');
     } catch (err) {
-      Alert.alert('Error', err.message);
+      const msg = err.message || 'Demo login failed.';
+      setErrorMessage(msg);
+      Alert.alert('Login Failed', msg);
     } finally {
       setSubmitting(false);
     }
@@ -101,7 +146,7 @@ export default function LoginScreen() {
                 styles.tabBtn,
                 !isRegistering && [styles.tabBtnActive, { backgroundColor: theme.card }],
               ]}
-              onPress={() => setIsRegistering(false)}
+              onPress={() => switchTab(false)}
             >
               <Text
                 style={[
@@ -119,7 +164,7 @@ export default function LoginScreen() {
                 styles.tabBtn,
                 isRegistering && [styles.tabBtnActive, { backgroundColor: theme.card }],
               ]}
-              onPress={() => setIsRegistering(true)}
+              onPress={() => switchTab(true)}
             >
               <Text
                 style={[
@@ -133,10 +178,20 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Inline Error Banner */}
+          {errorMessage ? (
+            <View style={[styles.errorBanner, { backgroundColor: theme.danger + '18', borderColor: theme.danger }]}>
+              <Ionicons name="alert-circle" size={18} color={theme.danger} />
+              <Text style={[styles.errorText, { color: theme.danger }]}>
+                {errorMessage}
+              </Text>
+            </View>
+          ) : null}
+
           {/* Form Fields */}
           {isRegistering && (
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: theme.subText }]}>Full Name</Text>
+              <Text style={[styles.inputLabel, { color: theme.subText }]}>Full Name *</Text>
               <View style={[styles.inputWrapper, { backgroundColor: theme.inputBg }]}>
                 <Ionicons name="person-outline" size={20} color={theme.subText} style={styles.inputIcon} />
                 <TextInput
@@ -144,7 +199,7 @@ export default function LoginScreen() {
                   placeholder="e.g. Hayesha Perera"
                   placeholderTextColor={theme.subText}
                   value={name}
-                  onChangeText={setName}
+                  onChangeText={(val) => { setName(val); setErrorMessage(''); }}
                   autoCapitalize="words"
                 />
               </View>
@@ -152,7 +207,7 @@ export default function LoginScreen() {
           )}
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.subText }]}>Email Address</Text>
+            <Text style={[styles.inputLabel, { color: theme.subText }]}>Email Address *</Text>
             <View style={[styles.inputWrapper, { backgroundColor: theme.inputBg }]}>
               <Ionicons name="mail-outline" size={20} color={theme.subText} style={styles.inputIcon} />
               <TextInput
@@ -160,7 +215,7 @@ export default function LoginScreen() {
                 placeholder="you@example.com"
                 placeholderTextColor={theme.subText}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(val) => { setEmail(val); setErrorMessage(''); }}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -168,15 +223,17 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.subText }]}>Password</Text>
+            <Text style={[styles.inputLabel, { color: theme.subText }]}>
+              {isRegistering ? 'Password (min. 6 chars) *' : 'Password *'}
+            </Text>
             <View style={[styles.inputWrapper, { backgroundColor: theme.inputBg }]}>
               <Ionicons name="lock-closed-outline" size={20} color={theme.subText} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.text }]}
-                placeholder="Enter your password"
+                placeholder={isRegistering ? 'At least 6 characters' : 'Enter your password'}
                 placeholderTextColor={theme.subText}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(val) => { setPassword(val); setErrorMessage(''); }}
                 secureTextEntry={!showPassword}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
@@ -189,6 +246,30 @@ export default function LoginScreen() {
             </View>
           </View>
 
+          {isRegistering && (
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: theme.subText }]}>Confirm Password *</Text>
+              <View style={[styles.inputWrapper, { backgroundColor: theme.inputBg }]}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={theme.subText} style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="Re-enter your password"
+                  placeholderTextColor={theme.subText}
+                  value={confirmPassword}
+                  onChangeText={(val) => { setConfirmPassword(val); setErrorMessage(''); }}
+                  secureTextEntry={!showConfirmPassword}
+                />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={theme.subText}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           {/* Submit Button */}
           <TouchableOpacity
             style={[styles.submitButton, { backgroundColor: theme.primary }]}
@@ -199,7 +280,7 @@ export default function LoginScreen() {
               <ActivityIndicator color="#FFF" />
             ) : (
               <Text style={styles.submitText}>
-                {isRegistering ? 'Sign Up' : 'Sign In'}
+                {isRegistering ? 'Create Account' : 'Sign In'}
               </Text>
             )}
           </TouchableOpacity>
@@ -213,7 +294,7 @@ export default function LoginScreen() {
             >
               <Ionicons name="log-in-outline" size={18} color={theme.primary} />
               <Text style={[styles.demoBtnText, { color: theme.primary }]}>
-                1-Tap Demo Login (Hayesha)
+                1-Tap Demo Login (hayesha@example.com)
               </Text>
             </TouchableOpacity>
           )}
@@ -222,10 +303,10 @@ export default function LoginScreen() {
         {/* Footer info */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.subText }]}>
-            Session persisted locally in AsyncStorage
+            Strict Account & Password Validation Enabled
           </Text>
           <Text style={[styles.footerText, { color: theme.subText }]}>
-            ENV: {ENV.environment.toUpperCase()} • {ENV.apiUrl}
+            Demo: hayesha@example.com • password123
           </Text>
         </View>
       </ScrollView>
@@ -239,20 +320,20 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 70,
+    paddingTop: 60,
     paddingBottom: 40,
   },
   brandContainer: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 24,
   },
   logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
     shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
@@ -260,7 +341,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
     letterSpacing: 0.5,
   },
@@ -270,7 +351,7 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 20,
-    padding: 22,
+    padding: 20,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -282,7 +363,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 12,
     padding: 4,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   tabBtn: {
     flex: 1,
@@ -301,8 +382,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 14,
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '600',
+  },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   inputLabel: {
     fontSize: 12,
@@ -320,7 +415,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 11,
     fontSize: 14,
   },
   submitButton: {
@@ -346,17 +441,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderRadius: 14,
-    paddingVertical: 12,
-    marginTop: 14,
+    paddingVertical: 11,
+    marginTop: 12,
     gap: 8,
   },
   demoBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
   footer: {
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 24,
   },
   footerText: {
     fontSize: 11,
