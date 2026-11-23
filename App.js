@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,10 +8,12 @@ import { StatusBar } from 'expo-status-bar';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { TaskProvider } from './src/context/TaskContext';
 import { UserProvider } from './src/context/UserContext';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 import HomeScreen from './src/screens/HomeScreen';
 import TasksScreen from './src/screens/TasksScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import LoginScreen from './src/screens/LoginScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -77,14 +80,47 @@ function MainNavigator() {
   );
 }
 
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const { theme } = useTheme();
+
+  if (isLoading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: theme.background,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <StatusBar style={theme.statusBarStyle} />
+        <LoginScreen />
+      </>
+    );
+  }
+
+  return <MainNavigator />;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
-      <UserProvider>
-        <TaskProvider>
-          <MainNavigator />
-        </TaskProvider>
-      </UserProvider>
+      <AuthProvider>
+        <UserProvider>
+          <TaskProvider>
+            <AppContent />
+          </TaskProvider>
+        </UserProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

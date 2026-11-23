@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useTasks } from '../context/TaskContext';
 import { useUser } from '../context/UserContext';
+import { useAuth } from '../context/AuthContext';
 import { ENV } from '../config/env';
 
 const { width } = Dimensions.get('window');
@@ -27,7 +28,10 @@ const QUOTES = [
 export default function HomeScreen({ navigation }) {
   const { theme } = useTheme();
   const { completedCount, pendingCount, starredCount, totalCount } = useTasks();
-  const { user } = useUser();
+  const { user: userProfile } = useUser();
+  const { user: authUser } = useAuth();
+
+  const currentUserName = authUser?.name || userProfile.name;
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [quoteIndex, setQuoteIndex] = useState(0);
@@ -89,7 +93,7 @@ export default function HomeScreen({ navigation }) {
             {getGreeting()} 👋
           </Text>
           <Text style={[styles.subtitle, { color: theme.subText }]}>
-            {user.name} • {ENV.appName}
+            {currentUserName} • {ENV.appName}
           </Text>
         </View>
         <TouchableOpacity

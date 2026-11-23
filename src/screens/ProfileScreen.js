@@ -14,18 +14,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
 import { useTasks } from '../context/TaskContext';
+import { useAuth } from '../context/AuthContext';
 import { ENV } from '../config/env';
 
 export default function ProfileScreen() {
   const { theme, isDarkMode, toggleTheme } = useTheme();
-  const { user, updateUser, resetUser } = useUser();
+  const { user: userProfile, updateUser, resetUser } = useUser();
+  const { user: authUser, logout } = useAuth();
   const { completedCount, totalCount } = useTasks();
 
+  const displayName = authUser?.name || userProfile.name;
+  const displayEmail = authUser?.email || userProfile.email;
+  const displayRole = authUser?.role || userProfile.role;
+
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [name, setName] = useState(user.name);
-  const [role, setRole] = useState(user.role);
-  const [email, setEmail] = useState(user.email);
-  const [bio, setBio] = useState(user.bio);
+  const [name, setName] = useState(displayName);
+  const [role, setRole] = useState(displayRole);
+  const [email, setEmail] = useState(displayEmail);
+  const [bio, setBio] = useState(userProfile.bio);
 
   const handleSaveProfile = () => {
     if (!name.trim()) {
@@ -41,18 +47,14 @@ export default function ProfileScreen() {
     updateUser({ notificationsEnabled: val });
   };
 
-  const handleResetProfile = () => {
-    Alert.alert('Reset Profile', 'Reset user profile back to defaults?', [
+  const handleLogout = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Reset',
+        text: 'Log Out',
         style: 'destructive',
-        onPress: () => {
-          resetUser();
-          setName('Hayesha Perera');
-          setRole('Full Stack Developer');
-          setEmail('hayesha@example.com');
-          setBio('Building modern mobile apps with React Native & Expo.');
+        onPress: async () => {
+          await logout();
         },
       },
     ]);
@@ -61,7 +63,7 @@ export default function ProfileScreen() {
   const stats = [
     { label: 'Completed', value: completedCount.toString(), icon: 'checkmark-done' },
     { label: 'Total Tasks', value: totalCount.toString(), icon: 'list' },
-    { label: 'Database', value: 'Local', icon: 'server' },
+    { label: 'Session', value: 'Active', icon: 'shield-checkmark' },
   ];
 
   return (
@@ -76,10 +78,10 @@ export default function ProfileScreen() {
             <Ionicons name="person" size={48} color="#FFF" />
           </View>
         </View>
-        <Text style={styles.name}>{user.name}</Text>
-        <Text style={styles.role}>{user.role}</Text>
-        <Text style={styles.email}>{user.email}</Text>
-        <Text style={styles.joinDate}>Member since {user.joinDate}</Text>
+        <Text style={styles.name}>{displayName}</Text>
+        <Text style={styles.role}>{displayRole}</Text>
+        <Text style={styles.email}>{displayEmail}</Text>
+        <Text style={styles.joinDate}>Logged in as {displayEmail}</Text>
       </View>
 
       {/* Stats Cards */}
@@ -116,31 +118,31 @@ export default function ProfileScreen() {
             <Text style={[styles.cardLabel, { color: theme.text }]}>Notifications</Text>
           </View>
           <Switch
-            value={user.notificationsEnabled}
+            value={userProfile.notificationsEnabled}
             onValueChange={handleToggleNotifications}
             trackColor={{ false: theme.border, true: theme.primaryLight }}
-            thumbColor={user.notificationsEnabled ? theme.primary : '#FFF'}
+            thumbColor={userProfile.notificationsEnabled ? theme.primary : '#FFF'}
           />
         </View>
       </View>
 
       {/* Account Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Account & Storage</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Account & Security</Text>
 
         <TouchableOpacity
           style={[styles.cardItem, { backgroundColor: theme.card, borderColor: theme.border }]}
           onPress={() => {
-            setName(user.name);
-            setRole(user.role);
-            setEmail(user.email);
-            setBio(user.bio);
+            setName(displayName);
+            setRole(displayRole);
+            setEmail(displayEmail);
+            setBio(userProfile.bio);
             setEditModalVisible(true);
           }}
         >
           <View style={styles.cardItemLeft}>
             <Ionicons name="create-outline" size={22} color={theme.primary} />
-            <Text style={[styles.cardLabel, { color: theme.text }]}>Edit Profile (Persisted)</Text>
+            <Text style={[styles.cardLabel, { color: theme.text }]}>Edit Profile</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={theme.subText} />
         </TouchableOpacity>
@@ -150,7 +152,7 @@ export default function ProfileScreen() {
           onPress={() =>
             Alert.alert(
               'Environment Config',
-              `App Name: ${ENV.appName}\nEnvironment: ${ENV.environment}\nAPI URL: ${ENV.apiUrl}\nVersion: ${ENV.version}`
+              `App Name: ${ENV.appName}\nEnvironment: ${ENV.environment}\nAPI URL: ${ENV.apiUrl}\nVersion: ${ENV.version}\nAuth Status: Logged in as ${displayEmail}`
             )
           }
         >
@@ -163,13 +165,15 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={[styles.cardItem, { backgroundColor: theme.card, borderColor: theme.border }]}
-          onPress={handleResetProfile}
+          onPress={handleLogout}
         >
           <View style={styles.cardItemLeft}>
-            <Ionicons name="refresh-outline" size={22} color={theme.danger} />
-            <Text style={[styles.cardLabel, { color: theme.danger }]}>Reset Profile Data</Text>
+            <Ionicons name="log-out-outline" size={22} color={theme.danger} />
+            <Text style={[styles.cardLabel, { color: theme.danger, fontWeight: '700' }]}>
+              Log Out
+            </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={theme.subText} />
+          <Ionicons name="chevron-forward" size={18} color={theme.danger} />
         </TouchableOpacity>
       </View>
 
