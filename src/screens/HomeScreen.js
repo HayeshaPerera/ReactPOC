@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -29,9 +30,16 @@ export default function HomeScreen({ navigation }) {
   const { theme } = useTheme();
   const { completedCount, pendingCount, starredCount, totalCount } = useTasks();
   const { user: userProfile } = useUser();
-  const { user: authUser } = useAuth();
+  const { user: authUser, logout } = useAuth();
 
   const currentUserName = authUser?.name || userProfile.name;
+
+  const handleLogout = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out and return to the Login screen?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log Out', style: 'destructive', onPress: logout },
+    ]);
+  };
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [quoteIndex, setQuoteIndex] = useState(0);
@@ -96,12 +104,21 @@ export default function HomeScreen({ navigation }) {
             {currentUserName} • {ENV.appName}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.avatarContainer}
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Ionicons name="person-circle" size={48} color={theme.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={() => navigation.navigate('Profile')}
+          >
+            <Ionicons name="person-circle" size={42} color={theme.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.headerLogoutBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={18} color={theme.danger} />
+            <Text style={[styles.headerLogoutText, { color: theme.danger }]}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Clock Card */}
@@ -220,6 +237,24 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     padding: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerLogoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  headerLogoutText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   clockCard: {
     borderRadius: 20,

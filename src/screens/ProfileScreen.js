@@ -164,16 +164,13 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.cardItem, { backgroundColor: theme.card, borderColor: theme.border }]}
+          style={[styles.logoutBtnCard, { backgroundColor: theme.card, borderColor: theme.danger }]}
           onPress={handleLogout}
         >
-          <View style={styles.cardItemLeft}>
-            <Ionicons name="log-out-outline" size={22} color={theme.danger} />
-            <Text style={[styles.cardLabel, { color: theme.danger, fontWeight: '700' }]}>
-              Log Out
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={theme.danger} />
+          <Ionicons name="log-out-outline" size={24} color={theme.danger} />
+          <Text style={[styles.logoutBtnText, { color: theme.danger }]}>
+            Log Out of Account
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -353,6 +350,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  logoutBtnCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    padding: 16,
+    marginTop: 8,
+    borderWidth: 1.5,
+    gap: 8,
+  },
+  logoutBtnText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   cardLabel: {
     fontSize: 14,
