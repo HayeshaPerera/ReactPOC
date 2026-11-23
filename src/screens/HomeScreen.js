@@ -15,7 +15,7 @@ const QUOTES = [
   { text: 'The best way to predict the future is to create it.', author: 'Peter Drucker' },
   { text: 'Innovation distinguishes between a leader and a follower.', author: 'Steve Jobs' },
   { text: 'Stay hungry, stay foolish.', author: 'Steve Jobs' },
-  { text: 'Code is like humor. When you have to explain it, it's bad.', author: 'Cory House' },
+  { text: "Code is like humor. When you have to explain it, it's bad.", author: 'Cory House' },
   { text: 'First, solve the problem. Then, write the code.', author: 'John Johnson' },
 ];
 
